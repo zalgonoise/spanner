@@ -39,9 +39,9 @@ type Span interface {
 type span struct {
 	rec bool
 	sync.RWMutex
-	trace  Trace
-	spanID SpanID
-	parent *SpanID
+	traceID TraceID
+	spanID  SpanID
+	parent  *SpanID
 
 	name   string
 	start  time.Time
@@ -50,12 +50,12 @@ type span struct {
 	events []*event
 }
 
-func newSpan(trace Trace, name string) Span {
+func newSpan(traceID TraceID, name string, pid *SpanID) Span {
 	newSpan := &span{
-		trace:  trace,
-		spanID: NewSpanID(),
-		parent: trace.Parent(),
-		name:   name,
+		traceID: traceID,
+		spanID:  NewSpanID(),
+		parent:  pid,
+		name:    name,
 	}
 	return newSpan
 }
@@ -172,7 +172,7 @@ func (s *span) Extract() SpanData {
 	}
 
 	return SpanData{
-		TraceID:    s.trace.ID(),
+		TraceID:    s.traceID,
 		SpanID:     s.spanID,
 		ParentID:   s.parent,
 		Name:       s.name,

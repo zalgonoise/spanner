@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -13,9 +12,7 @@ import (
 	"github.com/zalgonoise/spanner"
 )
 
-func runtime(w io.Writer) {
-	spanner.To(spanner.Writer(w))
-
+func runtime() {
 	ctx, startS := spanner.Start(context.Background(), `Runtime:"Main"`)
 	defer startS.End()
 
@@ -72,7 +69,9 @@ func runtimeE(ctx context.Context, text string, i int) {
 }
 func TestFunctionsWithSpan(t *testing.T) {
 	buf := new(bytes.Buffer)
-	runtime(buf)
+	spanner.To(spanner.Writer(buf))
+
+	runtime()
 
 	spanner.Processor().Flush(context.Background())
 	time.Sleep(10 * time.Millisecond)

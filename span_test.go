@@ -23,14 +23,14 @@ func TestNewSpan(t *testing.T) {
 			attr.String("attr", "attr"),
 			attr.Int("idx", 0),
 		}
-		tr = newTrace()
-		sp = newSpan(tr, name)
+		tr = NewTraceID()
+		sp = newSpan(tr, name, nil)
 	)
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 
 	t.Run("Simple", func(t *testing.T) {
-		newSpan := newSpan(tr, name)
+		newSpan := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -39,17 +39,14 @@ func TestNewSpan(t *testing.T) {
 		if s.name != name {
 			t.Errorf("unexpected output error: wanted %v ; got %v", name, s.name)
 		}
-		if s.rec {
-			t.Errorf("expected the Span not to be recording since it didn't start yet")
-		}
-		if !s.trace.ID().IsValid() {
+		if !s.traceID.IsValid() {
 			t.Errorf("invalid TraceID")
 		}
 		if !s.spanID.IsValid() {
 			t.Errorf("invalid SpanID")
 		}
-		if s.trace.ID().String() != tr.ID().String() {
-			t.Errorf("unexpected output error: wanted %s ; got %s", tr.ID().String(), s.trace.ID().String())
+		if s.traceID.String() != tr.String() {
+			t.Errorf("unexpected output error: wanted %s ; got %s", tr.String(), s.traceID.String())
 		}
 		if s.parent != nil {
 			t.Error("expected parent's SpanID to be nil")
@@ -68,7 +65,7 @@ func TestNewSpan(t *testing.T) {
 		}
 	})
 	t.Run("WithAttrs", func(t *testing.T) {
-		newSpan := newSpan(tr, name)
+		newSpan := newSpan(tr, name, nil)
 		newSpan.Add(attrs...)
 		s, ok := (newSpan).(*span)
 		if !ok {
@@ -78,17 +75,14 @@ func TestNewSpan(t *testing.T) {
 		if s.name != name {
 			t.Errorf("unexpected output error: wanted %v ; got %v", name, s.name)
 		}
-		if s.rec {
-			t.Errorf("expected the Span not to be recording since it didn't start yet")
-		}
-		if !s.trace.ID().IsValid() {
+		if !s.traceID.IsValid() {
 			t.Errorf("invalid TraceID")
 		}
 		if !s.spanID.IsValid() {
 			t.Errorf("invalid SpanID")
 		}
-		if s.trace.ID().String() != tr.ID().String() {
-			t.Errorf("unexpected output error: wanted %s ; got %s", tr.ID().String(), s.trace.ID().String())
+		if s.traceID.String() != tr.String() {
+			t.Errorf("unexpected output error: wanted %s ; got %s", tr.String(), s.traceID.String())
 		}
 		if s.parent != nil {
 			t.Error("expected parent's SpanID to be nil")
@@ -108,8 +102,7 @@ func TestNewSpan(t *testing.T) {
 	})
 	t.Run("WithParent", func(t *testing.T) {
 		sid := sp.ID()
-		tr.Register(&sid)
-		newSpan := newSpan(tr, name)
+		newSpan := newSpan(tr, name, &sid)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -118,17 +111,14 @@ func TestNewSpan(t *testing.T) {
 		if s.name != name {
 			t.Errorf("unexpected output error: wanted %v ; got %v", name, s.name)
 		}
-		if s.rec {
-			t.Errorf("expected the Span not to be recording since it didn't start yet")
-		}
-		if !s.trace.ID().IsValid() {
+		if !s.traceID.IsValid() {
 			t.Errorf("invalid TraceID")
 		}
 		if !s.spanID.IsValid() {
 			t.Errorf("invalid SpanID")
 		}
-		if s.trace.ID().String() != tr.ID().String() {
-			t.Errorf("unexpected output error: wanted %s ; got %s", tr.ID().String(), s.trace.ID().String())
+		if s.traceID.String() != tr.String() {
+			t.Errorf("unexpected output error: wanted %s ; got %s", tr.String(), s.traceID.String())
 		}
 		if s.parent == nil {
 			t.Error("expected parent's SpanID to be nil")
@@ -154,7 +144,7 @@ func TestNewSpan(t *testing.T) {
 func TestSpanIDMethod(t *testing.T) {
 	var (
 		name = "test"
-		tr   = newTrace()
+		tr   = NewTraceID()
 	)
 
 	testProc.Store(NewProcessor(Writer(testBuf)))
@@ -162,7 +152,7 @@ func TestSpanIDMethod(t *testing.T) {
 
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	t.Run("Success", func(t *testing.T) {
-		s := newSpan(tr, name)
+		s := newSpan(tr, name, nil)
 		id := s.ID()
 
 		if !id.IsValid() {
@@ -174,30 +164,24 @@ func TestSpanIDMethod(t *testing.T) {
 func TestSpanStart(t *testing.T) {
 	var (
 		name = "test"
-		tr   = newTrace()
+		tr   = NewTraceID()
 	)
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 
 	t.Run("Success", func(t *testing.T) {
-		newSpan := newSpan(tr, name)
+		newSpan := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
 		}
 
-		if s.rec {
-			t.Errorf("expected the Span not to be recording since it didn't start yet")
-		}
 		if !s.start.IsZero() || !reflect.DeepEqual(time.Time{}, s.start) {
 			t.Errorf("invalid start time: %v", s.start)
 		}
 
 		s.Start()
 
-		if !s.rec {
-			t.Errorf("expected the Span not to be recording since it didn't start yet")
-		}
 		if s.start.IsZero() || reflect.DeepEqual(time.Time{}, s.start) {
 			t.Errorf("invalid start time: %v", s.start)
 		}
@@ -212,15 +196,15 @@ func TestSpanAllMethods(t *testing.T) {
 			attr.String("attr", "attr"),
 			attr.Int("idx", 0),
 		}
-		tr  = newTrace()
-		sp  = newSpan(tr, name)
+		tr  = NewTraceID()
+		sp  = newSpan(tr, name, nil)
 		pid = sp.ID()
 	)
 
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 	t.Run("Success", func(t *testing.T) {
-		newSpan := newSpan(tr, name)
+		newSpan := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -228,7 +212,7 @@ func TestSpanAllMethods(t *testing.T) {
 
 		wants := SpanData{
 			Name:       newName,
-			TraceID:    tr.ID(),
+			TraceID:    tr,
 			ParentID:   &pid,
 			SpanID:     s.ID(),
 			Attributes: []attr.Attr{attrs[0]},
@@ -241,17 +225,17 @@ func TestSpanAllMethods(t *testing.T) {
 		if s.name != name {
 			t.Errorf("unexpected output error: wanted %v ; got %v", name, s.name)
 		}
-		if s.rec || s.IsRecording() {
+		if s.IsRecording() {
 			t.Errorf("expected the Span not to be recording since it didn't start yet")
 		}
-		if !s.trace.ID().IsValid() {
+		if !s.traceID.IsValid() {
 			t.Errorf("invalid TraceID")
 		}
 		if !s.spanID.IsValid() {
 			t.Errorf("invalid SpanID")
 		}
-		if s.trace.ID().String() != tr.ID().String() {
-			t.Errorf("unexpected output error: wanted %s ; got %s", tr.ID().String(), s.trace.ID().String())
+		if s.traceID.String() != tr.String() {
+			t.Errorf("unexpected output error: wanted %s ; got %s", tr.String(), s.traceID.String())
 		}
 		if s.parent != nil {
 			t.Error("expected parent's SpanID to be nil")
@@ -271,7 +255,7 @@ func TestSpanAllMethods(t *testing.T) {
 
 		s.Start()
 
-		if !s.rec || !s.IsRecording() {
+		if !s.IsRecording() {
 			t.Errorf("expected the Span to be recording since it started already")
 		}
 		if s.start.IsZero() || reflect.DeepEqual(time.Time{}, s.start) {
@@ -337,7 +321,7 @@ func TestSpanAllMethods(t *testing.T) {
 		if s.end == nil || s.end.IsZero() || reflect.DeepEqual(time.Time{}, s.end) {
 			t.Errorf("expected end to be zero: got %v", s.end)
 		}
-		if s.rec || s.IsRecording() {
+		if s.IsRecording() {
 			t.Errorf("expected the Span not to be recording since it already ended")
 		}
 		spanDataBuf, _ := spanData.MarshalJSON()
