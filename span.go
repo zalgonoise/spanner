@@ -37,7 +37,6 @@ type Span interface {
 }
 
 type span struct {
-	rec bool
 	sync.RWMutex
 	traceID TraceID
 	spanID  SpanID
@@ -50,14 +49,15 @@ type span struct {
 	events []*event
 }
 
-func newSpan(traceID TraceID, name string, pid *SpanID) Span {
+func newSpan(traceID TraceID, name string, pid *SpanID) (Span, SpanID) {
+	sid := NewSpanID()
 	newSpan := &span{
 		traceID: traceID,
-		spanID:  NewSpanID(),
+		spanID:  sid,
 		parent:  pid,
 		name:    name,
 	}
-	return newSpan
+	return newSpan, sid
 }
 
 // Start sets the span to record
@@ -69,7 +69,6 @@ func (s *span) Start() {
 	s.Lock()
 	defer s.Unlock()
 	s.start = time.Now()
-	s.rec = true
 }
 
 // End stops the span, returning the collected SpanData in the action
@@ -82,7 +81,6 @@ func (s *span) End() {
 
 	s.Lock()
 	*s.end = t
-	s.rec = false
 	s.Unlock()
 
 	p := proc.Load().(SpanProcessor)
@@ -96,7 +94,7 @@ func (s *span) ID() SpanID {
 
 // IsRecording returns a boolean on whether the Span is currently recording
 func (s *span) IsRecording() bool {
-	return s.rec
+	return s.end == nil
 }
 
 // SetName overwrites the Span's name field with the string `name`
@@ -161,12 +159,15 @@ func (s *span) Event(name string, attrs ...attr.Attr) {
 
 	s.Lock()
 	defer s.Unlock()
-	s.events = append(s.events, newEvent(name, attrs...))
+	e := newEvent(name, attrs...)
+	if e != nil {
+		s.events = append(s.events)
+	}
 }
 
 // Extract returns the current SpanData for the Span, regardless of its status
 func (s *span) Extract() SpanData {
-	if s.end != nil && s.rec {
+	if s.end == nil {
 		s.Lock()
 		defer s.Unlock()
 	}
@@ -185,7 +186,7 @@ func (s *span) Extract() SpanData {
 
 // Events returns the events in the Span
 func (s *span) Events() []EventData {
-	if s.end != nil && s.rec {
+	if s.end == nil {
 		s.Lock()
 		defer s.Unlock()
 	}

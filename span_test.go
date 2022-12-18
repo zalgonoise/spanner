@@ -23,14 +23,14 @@ func TestNewSpan(t *testing.T) {
 			attr.String("attr", "attr"),
 			attr.Int("idx", 0),
 		}
-		tr = NewTraceID()
-		sp = newSpan(tr, name, nil)
+		tr    = NewTraceID()
+		sp, _ = newSpan(tr, name, nil)
 	)
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 
 	t.Run("Simple", func(t *testing.T) {
-		newSpan := newSpan(tr, name, nil)
+		newSpan, _ := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -65,7 +65,7 @@ func TestNewSpan(t *testing.T) {
 		}
 	})
 	t.Run("WithAttrs", func(t *testing.T) {
-		newSpan := newSpan(tr, name, nil)
+		newSpan, _ := newSpan(tr, name, nil)
 		newSpan.Add(attrs...)
 		s, ok := (newSpan).(*span)
 		if !ok {
@@ -102,7 +102,7 @@ func TestNewSpan(t *testing.T) {
 	})
 	t.Run("WithParent", func(t *testing.T) {
 		sid := sp.ID()
-		newSpan := newSpan(tr, name, &sid)
+		newSpan, _ := newSpan(tr, name, &sid)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -152,7 +152,7 @@ func TestSpanIDMethod(t *testing.T) {
 
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	t.Run("Success", func(t *testing.T) {
-		s := newSpan(tr, name, nil)
+		s, _ := newSpan(tr, name, nil)
 		id := s.ID()
 
 		if !id.IsValid() {
@@ -170,7 +170,7 @@ func TestSpanStart(t *testing.T) {
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 
 	t.Run("Success", func(t *testing.T) {
-		newSpan := newSpan(tr, name, nil)
+		newSpan, _ := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")
@@ -196,15 +196,14 @@ func TestSpanAllMethods(t *testing.T) {
 			attr.String("attr", "attr"),
 			attr.Int("idx", 0),
 		}
-		tr  = NewTraceID()
-		sp  = newSpan(tr, name, nil)
-		pid = sp.ID()
+		tr      = NewTraceID()
+		sp, pid = newSpan(tr, name, nil)
 	)
 
 	testProc.Store(NewProcessor(Writer(testBuf)))
 	defer testProc.Load().(SpanProcessor).Shutdown(context.Background())
 	t.Run("Success", func(t *testing.T) {
-		newSpan := newSpan(tr, name, nil)
+		newSpan, _ := newSpan(tr, name, nil)
 		s, ok := (newSpan).(*span)
 		if !ok {
 			t.Errorf("failed to cast Span as *span")

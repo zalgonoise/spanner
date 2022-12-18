@@ -13,6 +13,10 @@ type event struct {
 }
 
 func newEvent(name string, attrs ...attr.Attr) *event {
+	if name == "" {
+		return nil
+	}
+
 	e := &event{
 		name:      name,
 		timestamp: time.Now(),

@@ -49,7 +49,11 @@ func init() {
 // The returned Span is required, even if to defer its closure, with `defer s.End()`. The caller MUST close the
 // returned Span.
 func (t baseTracer) Start(ctx context.Context, name string) (context.Context, Span) {
-	var tid TraceID
+	var (
+		tid TraceID
+		s   Span
+		sid SpanID
+	)
 
 	ctxData := GetContextData(ctx)
 	if ctxData == nil {
@@ -61,10 +65,9 @@ func (t baseTracer) Start(ctx context.Context, name string) (context.Context, Sp
 	} else {
 		tid = *ctxData.Trace
 	}
-	s := newSpan(tid, name, ctxData.Span)
+	s, sid = newSpan(tid, name, ctxData.Span)
 
 	ctx = WithContextData(ctx, ctxData)
-	sid := s.ID()
 	newCtx := WithContextData(ctx, &ContextData{
 		Trace: &tid,
 		Span:  &sid,
