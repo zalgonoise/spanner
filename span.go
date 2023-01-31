@@ -161,7 +161,7 @@ func (s *span) Event(name string, attrs ...attr.Attr) {
 	defer s.Unlock()
 	e := newEvent(name, attrs...)
 	if e != nil {
-		s.events = append(s.events)
+		s.events = append(s.events, e)
 	}
 }
 
