@@ -5,112 +5,59 @@ import (
 	"testing"
 )
 
-func TestWithNewTrace(t *testing.T) {
-	ctx, tr := WithNewTrace(context.Background())
-
-	if tr == nil || ctx == nil {
-		t.Errorf("unexpected nil value")
-		return
-	}
-
-	extracted := ctx.Value(ContextKey)
-	if extracted == nil {
-		t.Errorf("unexpected nil value")
-		return
-	}
-	extrTrace, ok := extracted.(Trace)
-	if !ok {
-		t.Errorf("unexpected type")
-		return
-	}
-	if tr.ID() != extrTrace.ID() {
-		t.Errorf("trace ID mismatch error: wanted %s ; got %s", tr.ID().String(), extrTrace.ID().String())
-		return
-	}
-}
-
-func TestWithTrace(t *testing.T) {
-	tr := newTrace()
-
-	ctx := WithTrace(context.Background(), tr)
-	extracted := ctx.Value(ContextKey)
-	if extracted == nil {
-		t.Errorf("unexpected nil value")
-		return
-	}
-	extrTrace, ok := extracted.(Trace)
-	if !ok {
-		t.Errorf("unexpected type")
-		return
-	}
-	if tr.ID() != extrTrace.ID() {
-		t.Errorf("trace ID mismatch error: wanted %s ; got %s", tr.ID().String(), extrTrace.ID().String())
-		return
-	}
-}
-
-func TestWithSpan(t *testing.T) {
-	tr := newTrace()
-	s := newSpan(tr, "test")
-
-	ctx := WithSpan(context.Background(), s)
-	extracted := ctx.Value(SpanContextKey)
-	if extracted == nil {
-		t.Errorf("unexpected nil value")
-		return
-	}
-	extrSpan, ok := extracted.(Span)
-	if !ok {
-		t.Errorf("unexpected type")
-		return
-	}
-	if s.ID() != extrSpan.ID() {
-		t.Errorf("span ID mismatch error: wanted %s ; got %s", s.ID().String(), extrSpan.ID().String())
-		return
-	}
-
-}
-
-func TestGetSpan(t *testing.T) {
+func TestContextData(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		tr := newTrace()
-		s := newSpan(tr, "test")
+		trID := NewTraceID()
+		sID := NewSpanID()
+		cd := &ContextData{
+			Trace: &trID,
+			Span:  &sID,
+		}
+		ctx := WithContextData(context.Background(), cd)
+		if ctx == nil {
+			t.Errorf("unexpected nil value")
+			return
+		}
 
-		ctx := context.WithValue(context.Background(), SpanContextKey, s)
+		// ensure Value() is covered, too
+		v := ctx.Value(ContextKey)
+		if v == nil {
+			t.Errorf("unexpected nil value")
+			return
+		}
+		if _, ok := v.(ContextData); !ok {
+			t.Errorf("type mismatch error: wanted %T ; got %T", &ContextData{}, v)
+			return
+		}
 
-		extrSpan := GetSpan(ctx)
+		storedCD := GetContextData(ctx)
+		if storedCD == nil {
+			t.Errorf("unexpected nil value")
+			return
+		}
 
-		if s.ID() != extrSpan.ID() {
-			t.Errorf("span ID mismatch error: wanted %s ; got %s", s.ID().String(), extrSpan.ID().String())
+		if storedCD.Trace == nil || storedCD.Span == nil {
+			t.Errorf("unexpected nil value")
+			return
+		}
+
+		if *storedCD.Trace != trID || *storedCD.Span != sID {
+			t.Errorf("content mismatch error")
 			return
 		}
 	})
 
-	t.Run("Fail", func(t *testing.T) {
-		t.Run("NoSpanValue", func(t *testing.T) {
-			tr := newTrace()
+	t.Run("NilCD", func(t *testing.T) {
+		ctx := WithContextData(context.Background(), nil)
+		if ctx == nil {
+			t.Errorf("unexpected nil value")
+			return
+		}
 
-			ctx := context.WithValue(context.Background(), ContextKey, tr)
-
-			extrSpan := GetSpan(ctx)
-
-			if extrSpan != nil {
-				t.Error("expected result to be nil")
-				return
-			}
-		})
-
-		t.Run("NotASpan", func(t *testing.T) {
-			tr := newTrace()
-
-			ctx := context.WithValue(context.Background(), SpanContextKey, tr)
-
-			extrSpan := GetSpan(ctx)
-
-			if extrSpan != nil {
-				t.Error("expected result to be nil")
-				return
-			}
-		})
+		storedCD := GetContextData(ctx)
+		if storedCD != nil {
+			t.Errorf("unexpected non-nil value")
+			return
+		}
 	})
 }
