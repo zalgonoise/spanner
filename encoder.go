@@ -1,6 +1,6 @@
 package spanner
 
-import "encoding/json"
+import json "github.com/goccy/go-json"
 
 // Encoder encodes any type into a byte slice or an error
 type Encoder interface {
